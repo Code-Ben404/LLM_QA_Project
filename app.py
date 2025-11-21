@@ -6,14 +6,15 @@ import os
 app = Flask(__name__)
 
 # ==========================================
-# 🛑 STOP! PASTE YOUR API KEY BELOW 🛑
+# 🛑 PASTE YOUR API KEY BELOW 🛑
 # ==========================================
 API_KEY = "AIzaSyA3DlxfypsyzI4L7uJ2ZMx5oYFDJ5pOWV8"
 
 # Configure the AI Model
 if API_KEY != "PASTE_YOUR_API_KEY_HERE":
     genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # CHANGED MODEL TO 'gemini-pro' (More stable)
+    model = genai.GenerativeModel('gemini-pro')
 else:
     model = None
     print("WARNING: API Key is missing. The app will not work until you add it.")
