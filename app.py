@@ -14,7 +14,7 @@ API_KEY = "AIzaSyA3DlxfypsyzI4L7uJ2ZMx5oYFDJ5pOWV8"
 if API_KEY != "PASTE_YOUR_API_KEY_HERE":
     genai.configure(api_key=API_KEY)
     # We use the standard, most reliable free model
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini -pro')
 else:
     model = None
 
