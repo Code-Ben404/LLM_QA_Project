@@ -10,32 +10,13 @@ app = Flask(__name__)
 # ==========================================
 API_KEY = "AIzaSyA3DlxfypsyzI4L7uJ2ZMx5oYFDJ5pOWV8"
 
-# --- DYNAMIC MODEL FINDER ---
-def configure_and_get_model():
-    if API_KEY == "PASTE_YOUR_API_KEY_HERE":
-        print("CRITICAL ERROR: API Key is missing.")
-        return None
-
+# Configure the AI Model
+if API_KEY != "PASTE_YOUR_API_KEY_HERE":
     genai.configure(api_key=API_KEY)
-    
-    try:
-        # Ask Google what models are available for THIS key
-        print("Searching for available models...")
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                print(f"Found valid model: {m.name}")
-                # Return the first valid model we find (e.g., models/gemini-pro)
-                return genai.GenerativeModel(m.name)
-                
-    except Exception as e:
-        print(f"Error listing models: {e}")
-    
-    # Absolute fallback if search fails
-    print("Search failed, forcing gemini-1.5-flash")
-    return genai.GenerativeModel('gemini-1.5-flash')
-
-# Initialize the model ONCE when app starts
-model = configure_and_get_model()
+    # We use the standard, most reliable free model
+    model = genai.GenerativeModel('gemini-1.5-flash')
+else:
+    model = None
 
 def preprocess_input(text):
     if not text: return ""
@@ -50,18 +31,18 @@ def index():
 @app.route('/ask', methods=['POST'])
 def ask():
     if not model:
-        return jsonify({"error": "API Key is missing or Invalid in app.py!"})
+        return jsonify({"error": "API Key is missing in app.py!"})
 
     try:
         data = request.get_json()
         question = data.get('question', '')
         
-        if not question: 
+        if not question:
             return jsonify({"error": "No question provided"})
 
         processed_text = preprocess_input(question)
         
-        # Generate Answer
+        # Send to AI
         response = model.generate_content(question)
         answer_text = response.text
 
@@ -71,6 +52,9 @@ def ask():
         })
 
     except Exception as e:
+        # If we get a 429 error, tell the user to wait
+        if "429" in str(e):
+            return jsonify({"error": "Too many requests! Please wait 1 minute and try again."})
         return jsonify({"error": f"AI Error: {str(e)}"})
 
 if __name__ == '__main__':
