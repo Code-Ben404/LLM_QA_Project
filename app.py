@@ -10,21 +10,34 @@ app = Flask(__name__)
 # ==========================================
 API_KEY = "AIzaSyA3DlxfypsyzI4L7uJ2ZMx5oYFDJ5pOWV8"
 
-# Configure the AI Model
-if API_KEY != "PASTE_YOUR_API_KEY_HERE":
+# --- DYNAMIC MODEL FINDER ---
+def configure_and_get_model():
+    if API_KEY == "PASTE_YOUR_API_KEY_HERE":
+        print("CRITICAL ERROR: API Key is missing.")
+        return None
+
     genai.configure(api_key=API_KEY)
-    # CHANGED MODEL TO 'gemini-pro' (More stable)
-    model = genai.GenerativeModel('gemini-pro')
-else:
-    model = None
-    print("WARNING: API Key is missing. The app will not work until you add it.")
+    
+    try:
+        # Ask Google what models are available for THIS key
+        print("Searching for available models...")
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                print(f"Found valid model: {m.name}")
+                # Return the first valid model we find (e.g., models/gemini-pro)
+                return genai.GenerativeModel(m.name)
+                
+    except Exception as e:
+        print(f"Error listing models: {e}")
+    
+    # Absolute fallback if search fails
+    print("Search failed, forcing gemini-1.5-flash")
+    return genai.GenerativeModel('gemini-1.5-flash')
+
+# Initialize the model ONCE when app starts
+model = configure_and_get_model()
 
 def preprocess_input(text):
-    """
-    Basic NLP Preprocessing:
-    1. Convert to lowercase
-    2. Remove punctuation (keep only words and spaces)
-    """
     if not text: return ""
     text = text.lower()
     text = re.sub(r'[^\w\s]', '', text)
@@ -32,33 +45,26 @@ def preprocess_input(text):
 
 @app.route('/')
 def index():
-    # Renders the frontend HTML file
     return render_template('index.html')
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    # 1. Check if API Key is set
     if not model:
-        return jsonify({
-            "error": "API Key is missing in app.py! Please open app.py and paste your Google API Key."
-        })
+        return jsonify({"error": "API Key is missing or Invalid in app.py!"})
 
     try:
-        # 2. Get data from Frontend
         data = request.get_json()
         question = data.get('question', '')
         
-        if not question:
+        if not question: 
             return jsonify({"error": "No question provided"})
 
-        # 3. Preprocessing (NLP Step)
         processed_text = preprocess_input(question)
         
-        # 4. Send to LLM (AI Step)
+        # Generate Answer
         response = model.generate_content(question)
         answer_text = response.text
 
-        # 5. Return Data to Frontend
         return jsonify({
             "processed": processed_text,
             "answer": answer_text
